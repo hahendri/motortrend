@@ -1,0 +1,166 @@
+---
+title: "Motortrend Study"
+author: "Harland Hendricks"
+date: "August 7, 2018"
+output: pdf_document
+---
+##Executive Summary
+
+*Motor Trend* magazine is interested in exploring the relationship between a set
+of variables from a data set of a collection of cars and miles per gallon (MPG).
+
+Specifically, the magazine would like to focus on the following two questions:
+
+* "Is an automatic or manual transmission better for MPG"
+
+* "Quantify the MPG difference between automatic and manual transmissions"
+
+When testing the predictors **wt**, **cyl**, and **am** using the nested model method, 
+I found that **am** is not significant and should not be used to model affects on MPG.  A simple plot of MPG per
+type of transmission is all that is required to determine that a manual transmission 
+can result in higher gas mileage for the data set used.  Additionally, simply subtracting
+the mean of automatic transmission MPG from manual transmission MPG quantifies the 
+difference in MPG.
+
+An appropriate model for MPG for the given data is one that includes the predictors 
+**wt** and **cyl**.  These predictors appear to influence MPG more than **am**.
+This model suggests that for every 1000 lbs increase in the automobile weight, MPG 
+decreases by 3.2 MPG.  Additionally, MPG will decrease by 4.3 when increasing cylinders 
+from 4 to 6, and will decrease by 6.1 when increasing cylynders from 4 to 8.
+
+##mtcars Dataset
+
+The instructions for this assignment are located [here.](https://www.coursera.org/learn/regression-models/peer/nxntd/regression-models-course-project)
+
+Built with R version `r getRversion()` with the following system:
+
+```{r, echo = FALSE}
+Sys.info()
+```
+
+Load the required libraries
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+Explore mtcars dataset
+
+```{r}
+head(mtcars, 3)
+```
+
+```{r}
+str(mtcars)
+```
+
+Create *data* object with **mpg**, **cyl**, **wt**, and **am** variables.  Reclassify **cyl** and **am** 
+from numeric to factor and add column **trans** to indicate transmission type.
+
+```{r}
+data <- mtcars[, c(1, 2, 6, 9)]
+data$cyl <- as.factor(data$cyl)
+data$am <- as.factor(data$am)
+data <- mutate(data, trans = ifelse(am == 1, "manual", "auto"))
+```
+
+Plot **trans** vs **mpg**
+
+```{r, fig.height = 4, fig.width = 4, echo = FALSE}
+g <- ggplot(data, aes(wt, mpg, color = cyl))
+g + geom_point() +
+      facet_grid(. ~ trans) +
+      ggtitle("Miles per Gallon (MPG) per Weight, Number of Cylinders, and Transmission Type") +
+      labs(x = "Weight (1000 lbs)", y = "MPG") +
+      theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "in"))
+```
+
+The initial plot of MPG given a weight, number of cylinders, and specific transmission type 
+indicates that as weight increases - mpg decreases.  Additionally, as the number of cylinders 
+increases - mpg decreases.  Finally, a manual transmission provides greater miles per gallon.
+
+##Model Selection and Fit
+
+I chose to use the predictors **cyl**, **wt**, and **am** due to the belief that
+these variables would have the most affect on **mpg**.  *Motor Trend* is also specifically
+interested in **am**.  I will build three models and then nest the models to determine which 
+model contains necessary predictors.
+
+###Model 1
+
+```{r}
+m1 <- lm(mpg ~ wt, data = data)
+summary(m1)
+```
+
+We can then plot the residuals for diagnostics:
+
+```{r, fig.height=4, fig.width=4}
+par(mfrow = c(2, 2))
+plot(m1)
+```
+
+The top left and top right residual plots indicate that there may be a problem modeling
+with just **wt**
+
+##Model 2
+
+```{r, echo = FALSE}
+m2 <- lm(mpg ~ wt + cyl, data = data)
+m2$call
+m2$coefficients
+```
+
+We can then plot the residuals for diagnostics:
+
+```{r, fig.height=4, fig.width=4, echo = FALSE}
+par(mfrow = c(2, 2))
+plot(m2)
+```
+
+This model looks better, but the top right residual plot still indicates that the residuals
+may not be normally distributed and there may be a problem modeling with **wt** and **cyl**.
+
+##Model 3
+
+```{r, echo = FALSE}
+m3 <- lm(mpg ~ wt + cyl + am, data = data)
+summary(m3)
+```
+
+We can then plot the residuals for diagnostics:
+
+```{r, fig.height=4, fig.width=4, echo = FALSE}
+par(mfrow = c(2, 2))
+plot(m3)
+```
+
+The residual plots for model 3 don't change much from 2, but the p values for **am** are 
+not significant.  There may be a problem modeling with **wt**, **cyl**, and **am**.
+
+##Nested Model Testing
+
+```{r}
+anova(m1, m2, m3)
+```
+
+
+Using the nested model test, I determine that the model with predictors **wt** and
+**cyl** is significant with acceptable residual plots.
+
+The predictor **am** is not significant and should not be used to model **mpg** in
+*Motor Trend's* study.  The linear model with **am** as a predictor just predicts the 
+mean of **mpg** when grouped by manual or automatic transmission and is not a very useful
+model
+
+The mean MPG of each **am** show that a manual transmission is better for **mpg** and
+that the difference between manual and automatic translates to a difference in MPG:
+
+```{r, fig.height=3, fig.width=3, echo = FALSE}
+g2 <- ggplot(data, aes(trans, mpg))
+g2 + geom_boxplot() +
+      ggtitle("Miles per Gallon (MPG) per Type of Transmission") +
+      labs(x = "Transmission Type", y = "MPG") +
+      theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "in"))
+```
